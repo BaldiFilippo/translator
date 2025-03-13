@@ -18,14 +18,15 @@ import { BookmarkIcon, RotateCw, Save, Trash2 } from 'lucide-react'
 import { translateText } from '@/lib/translate-service'
 import type { SavedPrompt } from '@/lib/types'
 
-export default function Home() {
+export default function TranslatorApp() {
   const [sourceText, setSourceText] = useState('')
   const [translatedText, setTranslatedText] = useState('')
   const [sourceLanguage, setSourceLanguage] = useState('EN')
-  const [targetLanguage, setTargetLanguage] = useState('ES')
+  const [targetLanguage, setTargetLanguage] = useState('IT')
   const [isTranslating, setIsTranslating] = useState(false)
   const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([])
   const [promptName, setPromptName] = useState('')
+  const [activeTab, setActiveTab] = useState('translate')
 
   // Load saved prompts from localStorage on component mount
   useEffect(() => {
@@ -75,11 +76,13 @@ export default function Home() {
     setPromptName('')
   }
 
+  // Update the loadPrompt function to switch to the translate tab after loading
   const loadPrompt = (prompt: SavedPrompt) => {
     setSourceText(prompt.sourceText)
     setSourceLanguage(prompt.sourceLanguage)
     setTargetLanguage(prompt.targetLanguage)
     setTranslatedText(prompt.translatedText)
+    setActiveTab('translate') // Switch to translate tab
   }
 
   const deletePrompt = (id: string) => {
@@ -90,7 +93,12 @@ export default function Home() {
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold text-center mb-8">DeepL Translator</h1>
 
-      <Tabs defaultValue="translate" className="w-full max-w-4xl mx-auto">
+      {/* Update the Tabs component to use the activeTab state */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full max-w-4xl mx-auto pointer"
+      >
         <TabsList className="grid w-full grid-cols-2 mb-8">
           <TabsTrigger value="translate">Translate</TabsTrigger>
           <TabsTrigger value="saved">Saved Prompts</TabsTrigger>

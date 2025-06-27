@@ -1,6 +1,6 @@
 export interface SavedPrompt {
     id: number
-    name: string
+  name: string
     source_text: string
     translated_text: string
     source_language: string
@@ -9,8 +9,8 @@ export interface SavedPrompt {
 }
 
 export interface TranslationResponse {
-    translations: {
-        text: string
-        detected_source_language?: string
-    }[]
+  translations: {
+    text: string
+    detected_source_language?: string
+  }[]
 }

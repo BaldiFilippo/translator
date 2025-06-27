@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -28,8 +27,9 @@ import { translateText } from "@/lib/translate-service"
 import type { SavedPrompt } from "@/lib/types"
 import { supabase } from "@/lib/supabaseClient"
 import type { Session } from "@supabase/auth-helpers-nextjs"
+import { LoginForm } from "@/components/login-form"
 
-export default function TranslatorApp() {
+export default function HomePage() {
     const [sourceText, setSourceText] = useState("")
     const [translatedText, setTranslatedText] = useState("")
     const [sourceLanguage, setSourceLanguage] = useState("EN")
@@ -40,33 +40,24 @@ export default function TranslatorApp() {
     const [activeTab, setActiveTab] = useState("translate")
     const [isCopied, setIsCopied] = useState(false)
     const [session, setSession] = useState<Session | null>(null)
-    const router = useRouter()
 
     useEffect(() => {
-        const getSessionAsync = async () => {
+        const getSession = async () => {
             const {
                 data: { session },
             } = await supabase.auth.getSession()
             setSession(session)
-            if (!session) {
-                router.push("/signin")
-            }
         }
-        getSessionAsync()
-
+        getSession()
         const { data: listener } = supabase.auth.onAuthStateChange(
             (_event, session) => {
                 setSession(session)
-                if (!session) {
-                    router.push("/signin")
-                }
             }
         )
-
         return () => {
             listener?.subscription.unsubscribe()
         }
-    }, [router])
+    }, [])
 
     const fetchSavedPrompts = useCallback(async () => {
         try {
@@ -153,13 +144,12 @@ export default function TranslatorApp() {
         }
     }
 
-    // Update the loadPrompt function to switch to the translate tab after loading
     const loadPrompt = (prompt: SavedPrompt) => {
         setSourceText(prompt.source_text)
         setSourceLanguage(prompt.source_language)
         setTargetLanguage(prompt.target_language)
         setTranslatedText(prompt.translated_text)
-        setActiveTab("translate") // Switch to translate tab
+        setActiveTab("translate")
     }
 
     const deletePrompt = async (id: number) => {
@@ -183,7 +173,11 @@ export default function TranslatorApp() {
     }
 
     if (!session) {
-        return null // or a loading spinner
+        return (
+            <div className="flex min-h-screen items-center justify-center">
+                <LoginForm />
+            </div>
+        )
     }
 
     return (
@@ -197,7 +191,6 @@ export default function TranslatorApp() {
                 </Button>
             </div>
 
-            {/* Update the Tabs component to use the activeTab state */}
             <Tabs
                 value={activeTab}
                 onValueChange={setActiveTab}

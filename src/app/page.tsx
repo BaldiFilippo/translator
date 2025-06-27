@@ -184,7 +184,7 @@ export default function HomePage() {
         <div className="container mx-auto py-8 px-4">
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold text-center">
-                    DeepL Translator
+                    DeepL Translator test deploy
                 </h1>
                 <Button onClick={() => supabase.auth.signOut()}>
                     Sign Out

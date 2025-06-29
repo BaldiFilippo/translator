@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -26,8 +25,10 @@ import {
 import { translateText } from "@/lib/translate-service"
 import type { SavedPrompt } from "@/lib/types"
 import { supabase } from "@/lib/supabaseClient"
-import type { Session } from "@supabase/auth-helpers-nextjs"
+import { User } from "@supabase/supabase-js"
 import { LoginForm } from "@/components/login-form"
+import { motion, AnimatePresence } from "framer-motion"
+import { useRouter } from "next/navigation"
 
 export default function HomePage() {
     const [sourceText, setSourceText] = useState("")
@@ -39,19 +40,23 @@ export default function HomePage() {
     const [promptName, setPromptName] = useState("")
     const [activeTab, setActiveTab] = useState("translate")
     const [isCopied, setIsCopied] = useState(false)
-    const [session, setSession] = useState<Session | null>(null)
+    const [user, setUser] = useState<User | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [copyFeedback, setCopyFeedback] = useState("")
+    const router = useRouter()
 
     useEffect(() => {
-        const getSession = async () => {
+        const getUser = async () => {
             const {
-                data: { session },
-            } = await supabase.auth.getSession()
-            setSession(session)
+                data: { user },
+            } = await supabase.auth.getUser()
+            setUser(user)
+            setLoading(false)
         }
-        getSession()
+        getUser()
         const { data: listener } = supabase.auth.onAuthStateChange(
             (_event, session) => {
-                setSession(session)
+                setUser(session?.user ?? null)
             }
         )
         return () => {
@@ -85,15 +90,17 @@ export default function HomePage() {
     const handleCopy = () => {
         navigator.clipboard.writeText(translatedText)
         setIsCopied(true)
+        setCopyFeedback("Copied!")
         setTimeout(() => {
             setIsCopied(false)
-        }, 2000)
+            setCopyFeedback("")
+        }, 1500)
     }
 
     const handleTranslate = async () => {
         if (!sourceText.trim()) return
-
         setIsTranslating(true)
+        setTranslatedText("")
         try {
             const result = await translateText(
                 sourceText,
@@ -101,11 +108,8 @@ export default function HomePage() {
                 targetLanguage
             )
             setTranslatedText(result)
-        } catch (error) {
-            console.error("Translation error:", error)
-            setTranslatedText(
-                "Error occurred during translation. Please try again."
-            )
+        } catch {
+            setTranslatedText("Error: Could not translate. Please try again.")
         } finally {
             setIsTranslating(false)
         }
@@ -172,238 +176,281 @@ export default function HomePage() {
         }
     }
 
-    if (!session) {
+    if (loading) {
         return (
-            <div className="flex min-h-screen items-center justify-center">
+            <div className="flex min-h-screen items-center justify-center bg-background">
+                <span
+                    className="animate-spin rounded-full border-4 border-gray-300 border-t-orange-500 h-10 w-10"
+                    aria-label="Loading"
+                />
+            </div>
+        )
+    }
+    if (!user) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-background">
                 <LoginForm />
             </div>
         )
     }
 
     return (
-        <div className="container mx-auto py-8 px-4">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-center">
-                    DeepL Translator test deploy
+        <main className="min-h-screen bg-background flex flex-col items-center px-2 py-6">
+            <header className="w-full max-w-4xl flex justify-between items-center mb-8 px-2">
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-center flex-1">
+                    DeepL Translator
                 </h1>
-                <Button onClick={() => supabase.auth.signOut()}>
+                <Button
+                    onClick={async () => {
+                        await supabase.auth.signOut()
+                        router.push("/auth/login")
+                    }}
+                    aria-label="Sign out"
+                    variant="ghost"
+                    className="ml-4"
+                >
                     Sign Out
                 </Button>
-            </div>
-
-            <Tabs
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="w-full max-w-4xl mx-auto pointer"
-            >
-                <TabsList className="grid w-full grid-cols-2 mb-8">
-                    <TabsTrigger value="translate">Translate</TabsTrigger>
-                    <TabsTrigger value="saved">Saved Prompts</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="translate">
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="grid gap-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <Label htmlFor="sourceLanguage">
-                                                Source Language
-                                            </Label>
-                                            <Select
-                                                value={sourceLanguage}
-                                                onValueChange={
-                                                    setSourceLanguage
-                                                }
-                                            >
-                                                <SelectTrigger className="w-[120px]">
-                                                    <SelectValue placeholder="Select language" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="EN">
-                                                        English
-                                                    </SelectItem>
-                                                    <SelectItem value="DE">
-                                                        German
-                                                    </SelectItem>
-                                                    <SelectItem value="FR">
-                                                        French
-                                                    </SelectItem>
-                                                    <SelectItem value="ES">
-                                                        Spanish
-                                                    </SelectItem>
-                                                    <SelectItem value="IT">
-                                                        Italian
-                                                    </SelectItem>
-                                                    <SelectItem value="JA">
-                                                        Japanese
-                                                    </SelectItem>
-                                                    <SelectItem value="ZH">
-                                                        Chinese
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="relative">
-                                            <Textarea
-                                                id="sourceText"
-                                                placeholder="Enter text to translate"
-                                                className="min-h-[200px] resize-none"
-                                                value={sourceText}
-                                                onChange={(e) =>
-                                                    setSourceText(
-                                                        e.target.value
-                                                    )
-                                                }
-                                            />
-                                            {sourceText && (
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="absolute top-2 right-2"
-                                                    onClick={() =>
-                                                        setSourceText("")
-                                                    }
-                                                >
-                                                    <X className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <Label htmlFor="targetLanguage">
-                                                Target Language
-                                            </Label>
-                                            <Select
-                                                value={targetLanguage}
-                                                onValueChange={
-                                                    setTargetLanguage
-                                                }
-                                            >
-                                                <SelectTrigger className="w-[120px]">
-                                                    <SelectValue placeholder="Select language" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="EN">
-                                                        English
-                                                    </SelectItem>
-                                                    <SelectItem value="DE">
-                                                        German
-                                                    </SelectItem>
-                                                    <SelectItem value="FR">
-                                                        French
-                                                    </SelectItem>
-                                                    <SelectItem value="ES">
-                                                        Spanish
-                                                    </SelectItem>
-                                                    <SelectItem value="IT">
-                                                        Italian
-                                                    </SelectItem>
-                                                    <SelectItem value="JA">
-                                                        Japanese
-                                                    </SelectItem>
-                                                    <SelectItem value="ZH">
-                                                        Chinese
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="relative">
-                                            <Textarea
-                                                id="translatedText"
-                                                placeholder="Translation will appear here"
-                                                className="min-h-[200px] resize-none"
-                                                value={translatedText}
-                                                readOnly
-                                            />
-                                            {translatedText && (
-                                                <div className="absolute bottom-2 right-2 flex items-center space-x-2">
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        onClick={handleCopy}
-                                                    >
-                                                        {isCopied ? (
-                                                            <Check className="h-5 w-5 text-green-500" />
-                                                        ) : (
-                                                            <Copy className="h-5 w-5" />
-                                                        )}
-                                                    </Button>
-                                                    <a
-                                                        href={`https://www.google.com/search?q=${encodeURIComponent(
-                                                            translatedText
-                                                        )}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                    >
-                                                        <img
-                                                            src="/google.svg"
-                                                            alt="Search on Google"
-                                                            className="h-5 w-5"
-                                                        />
-                                                    </a>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-center">
+            </header>
+            <section className="w-full max-w-4xl bg-white dark:bg-zinc-900 rounded-xl shadow-lg p-4 md:p-8 flex flex-col gap-8">
+                <Tabs
+                    value={activeTab}
+                    onValueChange={setActiveTab}
+                    className="w-full"
+                >
+                    <TabsList className="grid w-full grid-cols-2 mb-8">
+                        <TabsTrigger value="translate">Translate</TabsTrigger>
+                        <TabsTrigger value="saved">Saved Prompts</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="translate">
+                        <div className="grid gap-6 md:grid-cols-2">
+                            <div className="flex flex-col gap-2">
+                                <Label
+                                    htmlFor="sourceText"
+                                    className="font-semibold"
+                                >
+                                    Source Language
+                                </Label>
+                                <Select
+                                    value={sourceLanguage}
+                                    onValueChange={setSourceLanguage}
+                                    aria-label="Select source language"
+                                >
+                                    <SelectTrigger className="w-full md:w-[160px] focus:ring-2 focus:ring-orange-500">
+                                        <SelectValue placeholder="Select language" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="EN">
+                                            English
+                                        </SelectItem>
+                                        <SelectItem value="DE">
+                                            German
+                                        </SelectItem>
+                                        <SelectItem value="FR">
+                                            French
+                                        </SelectItem>
+                                        <SelectItem value="ES">
+                                            Spanish
+                                        </SelectItem>
+                                        <SelectItem value="IT">
+                                            Italian
+                                        </SelectItem>
+                                        <SelectItem value="JA">
+                                            Japanese
+                                        </SelectItem>
+                                        <SelectItem value="ZH">
+                                            Chinese
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Textarea
+                                    id="sourceText"
+                                    placeholder="Enter text to translate"
+                                    className="min-h-[160px] resize-none mt-2 focus:ring-2 focus:ring-orange-500"
+                                    value={sourceText}
+                                    onChange={(e) =>
+                                        setSourceText(e.target.value)
+                                    }
+                                    aria-label="Text to translate"
+                                    autoFocus
+                                />
+                                {sourceText && (
                                     <Button
-                                        onClick={handleTranslate}
-                                        disabled={
-                                            isTranslating || !sourceText.trim()
-                                        }
-                                        className="w-full max-w-[200px]"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="absolute top-2 right-2"
+                                        onClick={() => setSourceText("")}
+                                        aria-label="Clear input"
                                     >
-                                        {isTranslating ? (
-                                            <>
-                                                <RotateCw className="mr-2 h-4 w-4 animate-spin" />
-                                                Translating...
-                                            </>
-                                        ) : (
-                                            "Translate"
-                                        )}
+                                        <X className="h-4 w-4" />
                                     </Button>
-                                </div>
-
-                                {translatedText && (
-                                    <div className="border-t pt-4 mt-4">
-                                        <h3 className="text-lg font-medium mb-2">
-                                            Save this translation
-                                        </h3>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                placeholder="Name this prompt"
-                                                value={promptName}
-                                                onChange={(e) =>
-                                                    setPromptName(
-                                                        e.target.value
-                                                    )
-                                                }
-                                            />
-                                            <Button
-                                                onClick={savePrompt}
-                                                disabled={!promptName.trim()}
-                                                variant="outline"
-                                            >
-                                                <Save className="mr-2 h-4 w-4" />
-                                                Save
-                                            </Button>
-                                        </div>
-                                    </div>
                                 )}
                             </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="saved">
-                    <Card>
-                        <CardContent className="pt-6">
+                            <div className="flex flex-col gap-2 relative">
+                                <Label
+                                    htmlFor="translatedText"
+                                    className="font-semibold"
+                                >
+                                    Target Language
+                                </Label>
+                                <Select
+                                    value={targetLanguage}
+                                    onValueChange={setTargetLanguage}
+                                    aria-label="Select target language"
+                                >
+                                    <SelectTrigger className="w-full md:w-[160px] focus:ring-2 focus:ring-orange-500">
+                                        <SelectValue placeholder="Select language" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="EN">
+                                            English
+                                        </SelectItem>
+                                        <SelectItem value="DE">
+                                            German
+                                        </SelectItem>
+                                        <SelectItem value="FR">
+                                            French
+                                        </SelectItem>
+                                        <SelectItem value="ES">
+                                            Spanish
+                                        </SelectItem>
+                                        <SelectItem value="IT">
+                                            Italian
+                                        </SelectItem>
+                                        <SelectItem value="JA">
+                                            Japanese
+                                        </SelectItem>
+                                        <SelectItem value="ZH">
+                                            Chinese
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <div className="relative mt-2">
+                                    <AnimatePresence>
+                                        {isTranslating && (
+                                            <motion.div
+                                                key="loading"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-zinc-900/80 z-10 rounded-lg"
+                                                aria-live="polite"
+                                            >
+                                                <span className="animate-spin rounded-full border-4 border-gray-300 border-t-orange-500 h-8 w-8 mr-2" />
+                                                Translating...
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                    <Textarea
+                                        id="translatedText"
+                                        placeholder="Translation will appear here"
+                                        className="min-h-[160px] resize-none focus:ring-2 focus:ring-orange-500 pr-20"
+                                        value={translatedText}
+                                        readOnly
+                                        aria-label="Translation output"
+                                        tabIndex={0}
+                                    />
+                                    <div className="absolute bottom-2 right-2 flex items-center space-x-2">
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            onClick={handleCopy}
+                                            aria-label="Copy translation"
+                                            tabIndex={0}
+                                        >
+                                            {isCopied ? (
+                                                <Check className="h-5 w-5 text-green-500" />
+                                            ) : (
+                                                <Copy className="h-5 w-5" />
+                                            )}
+                                        </Button>
+                                        <a
+                                            href={`https://www.google.com/search?q=${encodeURIComponent(
+                                                translatedText
+                                            )}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            aria-label="Search translation on Google"
+                                            tabIndex={0}
+                                        >
+                                            <img
+                                                src="/google.svg"
+                                                alt="Search on Google"
+                                                className="h-5 w-5"
+                                            />
+                                        </a>
+                                    </div>
+                                    <AnimatePresence>
+                                        {copyFeedback && (
+                                            <motion.div
+                                                key="copy-feedback"
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: 10 }}
+                                                className="absolute bottom-10 right-2 bg-green-500 text-white px-3 py-1 rounded shadow"
+                                                aria-live="polite"
+                                            >
+                                                {copyFeedback}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex justify-center mt-6">
+                            <Button
+                                onClick={handleTranslate}
+                                disabled={isTranslating || !sourceText.trim()}
+                                className="w-full max-w-[220px] text-lg py-2"
+                                aria-label="Translate"
+                            >
+                                {isTranslating ? (
+                                    <>
+                                        <RotateCw className="mr-2 h-4 w-4 animate-spin" />
+                                        Translating...
+                                    </>
+                                ) : (
+                                    "Translate"
+                                )}
+                            </Button>
+                        </div>
+                        <AnimatePresence>
+                            {translatedText && !isTranslating && (
+                                <motion.div
+                                    key="save-section"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 10 }}
+                                    className="border-t pt-4 mt-4"
+                                >
+                                    <h3 className="text-lg font-medium mb-2">
+                                        Save this translation
+                                    </h3>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="Name this prompt"
+                                            value={promptName}
+                                            onChange={(e) =>
+                                                setPromptName(e.target.value)
+                                            }
+                                            aria-label="Prompt name"
+                                        />
+                                        <Button
+                                            onClick={savePrompt}
+                                            disabled={!promptName.trim()}
+                                            variant="outline"
+                                            aria-label="Save translation"
+                                        >
+                                            <Save className="mr-2 h-4 w-4" />
+                                            Save
+                                        </Button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </TabsContent>
+                    <TabsContent value="saved">
+                        <div className="grid gap-4">
                             {savedPrompts.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     <BookmarkIcon className="mx-auto h-12 w-12 mb-2 opacity-50" />
@@ -413,70 +460,64 @@ export default function HomePage() {
                                     </p>
                                 </div>
                             ) : (
-                                <div className="grid gap-4">
-                                    {savedPrompts.map((prompt) => (
-                                        <div
-                                            key={prompt.id}
-                                            className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
-                                        >
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h3 className="font-medium">
-                                                    {prompt.name}
-                                                </h3>
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() =>
-                                                            loadPrompt(prompt)
-                                                        }
-                                                    >
-                                                        Load
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() =>
-                                                            deletePrompt(
-                                                                prompt.id
-                                                            )
-                                                        }
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                                                <div>
-                                                    <p className="text-muted-foreground mb-1">
-                                                        {getLanguageName(
-                                                            prompt.source_language
-                                                        )}
-                                                    </p>
-                                                    <p className="line-clamp-2">
-                                                        {prompt.source_text}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-muted-foreground mb-1">
-                                                        {getLanguageName(
-                                                            prompt.target_language
-                                                        )}
-                                                    </p>
-                                                    <p className="line-clamp-2">
-                                                        {prompt.translated_text}
-                                                    </p>
-                                                </div>
+                                savedPrompts.map((prompt) => (
+                                    <motion.div
+                                        key={prompt.id}
+                                        className="border rounded-lg p-4 hover:bg-orange-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                        onClick={() => loadPrompt(prompt)}
+                                        tabIndex={0}
+                                        role="button"
+                                        aria-label={`Load saved prompt: ${prompt.name}`}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <div className="flex justify-between items-center mb-2">
+                                            <h3 className="font-medium text-lg truncate max-w-[70%]">
+                                                {prompt.name}
+                                            </h3>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        deletePrompt(prompt.id)
+                                                    }}
+                                                    aria-label={`Delete saved prompt: ${prompt.name}`}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                            <div>
+                                                <p className="text-muted-foreground mb-1">
+                                                    {getLanguageName(
+                                                        prompt.source_language
+                                                    )}
+                                                </p>
+                                                <p className="line-clamp-2">
+                                                    {prompt.source_text}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-muted-foreground mb-1">
+                                                    {getLanguageName(
+                                                        prompt.target_language
+                                                    )}
+                                                </p>
+                                                <p className="line-clamp-2">
+                                                    {prompt.translated_text}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))
                             )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
-        </div>
+                        </div>
+                    </TabsContent>
+                </Tabs>
+            </section>
+        </main>
     )
 }
 

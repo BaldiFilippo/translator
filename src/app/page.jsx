@@ -29,7 +29,11 @@ function useErrorHandler() {
     const [error, setError] = useState(null)
 
     const handleError = (err, defaultMessage) => {
-        setError(err instanceof Error ? { message: err.message } : { message: defaultMessage })
+        setError(
+            err instanceof Error
+                ? { message: err.message }
+                : { message: defaultMessage }
+        )
     }
 
     return { error, handleError, setError }
@@ -118,7 +122,7 @@ export default function HomePage() {
         <ErrorBoundary>
             <main className="min-h-screen bg-background flex flex-col items-center px-2 py-6">
                 <header className="w-full max-w-4xl flex justify-between items-center mb-8 px-2">
-                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight flex-1">
+                    <h1 className="text-lg md:text-4xl font-bold tracking-tight flex-1">
                         DeepL Translator
                     </h1>
                     {user && (

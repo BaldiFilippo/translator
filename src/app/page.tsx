@@ -151,6 +151,7 @@ export default function HomePage() {
                             <TranslationForm
                                 onSavePrompt={handleSavePrompt}
                                 initialPrompt={selectedPrompt}
+                                user={user}
                             />
                         </TabsContent>
 

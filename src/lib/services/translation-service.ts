@@ -1,59 +1,23 @@
 import { supabase } from "../supabaseClient"
-import { SavedPrompt, TranslationResult } from "../types"
+import { SavedPrompt } from "../types"
 
 export class TranslationService {
-    /**
-     * Translate text using the DeepL API
-     */
-    static async translateText(
-        text: string,
-        sourceLanguage: string,
-        targetLanguage: string
-    ): Promise<TranslationResult> {
-        try {
-            const response = await fetch("/api/translate", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    text,
-                    sourceLanguage,
-                    targetLanguage,
-                }),
-            })
-
-            if (!response.ok) {
-                throw new Error("Translation failed")
-            }
-
-            const data = await response.json()
-            return { translatedText: data.translatedText }
-        } catch (error) {
-            console.error("Translation error:", error)
-            return {
-                translatedText: "",
-                error: {
-                    message:
-                        error instanceof Error
-                            ? error.message
-                            : "Translation failed",
-                    code: "translation/api-error",
-                },
-            }
-        }
-    }
+    
 
     /**
      * Save a translation prompt
      */
     static async savePrompt(
-        prompt: Omit<SavedPrompt, "id" | "created_at">
+        prompt: Omit<SavedPrompt, "id" | "created_at">,
+        userId: string
     ): Promise<{ data: SavedPrompt | null; error: string | null }> {
+        if (!userId) {
+            return { data: null, error: "User ID is required to save a prompt." }
+        }
         try {
             const { data, error } = await supabase
                 .from("translation")
-                .insert([prompt])
+                .insert([{ ...prompt, name: userId }])
                 .select()
                 .single()
 
@@ -82,7 +46,7 @@ export class TranslationService {
         try {
             const { data, error } = await supabase
                 .from("translation")
-                .select("*")
+                .select("id, name, source_text, translated_text, source_language, target_language, created_at")
                 .order("created_at", { ascending: false })
 
             if (error) throw error

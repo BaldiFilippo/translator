@@ -43,8 +43,9 @@ export function SavedPrompts({
                 >
                     <div className="flex justify-between items-center mb-2">
                         <h3 className="font-medium text-lg truncate max-w-[70%]">
-                            {prompt.name}
+                            {prompt.source_text}
                         </h3>
+                        <p className="text-sm text-muted-foreground">by {prompt.name}</p>
                         <div className="flex gap-2">
                             <Button
                                 size="sm"

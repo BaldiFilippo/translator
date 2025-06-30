@@ -7,47 +7,81 @@ import { TranslationInput } from "./TranslationInput"
 import { TranslationService } from "@/lib/services/translation-service"
 import { ErrorBoundary } from "@/components/ui/error-boundary"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import type {
-    SavedPrompt,
-    TranslationFormState,
-    LanguageCode,
-    ApiError,
-} from "@/lib/types"
+import { SavedPrompt } from "@/lib/types"
 
 interface TranslationFormProps {
     onSavePrompt: (prompt: SavedPrompt) => void
     initialPrompt?: SavedPrompt
+    user: { id: string; name?: string }
+}
+
+interface TranslationFormState {
+    sourceText: string
+    sourceLang: string
+    targetLang: string
+    isTranslating: boolean
+    isSaving: boolean
+    error: { message: string } | null
+    result: {
+        originalText: string
+        translatedText: string
+        sourceLang: string
+        targetLang: string
+        timestamp: string
+    }
 }
 
 export function TranslationForm({
     onSavePrompt,
     initialPrompt,
+    user,
 }: TranslationFormProps) {
+    console.log("TranslationForm rendered. initialPrompt:", initialPrompt)
     const [state, setState] = useState<TranslationFormState>({
         sourceText: initialPrompt?.source_text || "",
-        sourceLang: initialPrompt?.source_lang || "EN",
-        targetLang: initialPrompt?.target_lang || "ES",
+        sourceLang: initialPrompt?.source_language || "EN",
+        targetLang: initialPrompt?.target_language || "ES",
         isTranslating: false,
+        isSaving: false,
         error: null,
+        result: {
+            originalText: "",
+            translatedText: "",
+            sourceLang: "",
+            targetLang: "",
+            timestamp: "",
+        },
     })
+
+    console.log("TranslationForm initial state:", state)
 
     useEffect(() => {
         if (initialPrompt) {
             setState({
                 sourceText: initialPrompt.source_text,
-                sourceLang: initialPrompt.source_lang,
-                targetLang: initialPrompt.target_lang,
+                sourceLang: initialPrompt.source_language,
+                targetLang: initialPrompt.target_language,
                 isTranslating: false,
+                isSaving: false,
                 error: null,
+                result: {
+                    originalText: initialPrompt.source_text,
+                    translatedText: initialPrompt.translated_text,
+                    sourceLang: initialPrompt.source_language,
+                    targetLang: initialPrompt.target_language,
+                    timestamp: new Date().toISOString(),
+                },
             })
         }
     }, [initialPrompt])
 
-    const handleSourceLangChange = (lang: LanguageCode) => {
+    const handleSourceLangChange = (lang: string) => {
+        console.log("handleSourceLangChange called with:", lang)
         setState((prev) => ({ ...prev, sourceLang: lang }))
     }
 
-    const handleTargetLangChange = (lang: LanguageCode) => {
+    const handleTargetLangChange = (lang: string) => {
+        console.log("handleTargetLangChange called with:", lang)
         setState((prev) => ({ ...prev, targetLang: lang }))
     }
 
@@ -67,34 +101,104 @@ export function TranslationForm({
         setState((prev) => ({ ...prev, isTranslating: true, error: null }))
 
         try {
-            const { data, error } = await TranslationService.translate({
-                sourceText: state.sourceText,
-                sourceLang: state.sourceLang,
-                targetLang: state.targetLang,
+            const response = await fetch("/api/translate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    text: state.sourceText,
+                    sourceLanguage: state.sourceLang,
+                    targetLanguage: state.targetLang,
+                }),
             })
 
-            if (error) throw error
-
-            if (data) {
-                const savedPrompt = await TranslationService.savePrompt({
-                    source_text: state.sourceText,
-                    translated_text: data.translatedText,
-                    source_lang: state.sourceLang,
-                    target_lang: state.targetLang,
-                })
-
-                if (savedPrompt.data) {
-                    onSavePrompt(savedPrompt.data)
-                }
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.message || "Translation failed")
             }
+
+            const translationData = await response.json()
+
+            // Store the translated text in state to be saved later
+            setState((prev) => ({
+                ...prev,
+                result: {
+                    originalText: state.sourceText,
+                    translatedText: translationData.translatedText,
+                    sourceLang: state.sourceLang,
+                    targetLang: state.targetLang,
+                    timestamp: new Date().toISOString(),
+                },
+            }))
         } catch (error) {
             setState((prev) => ({
                 ...prev,
-                error: error as ApiError,
+                error: {
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : "An unknown error occurred during translation",
+                },
             }))
         } finally {
             setState((prev) => ({ ...prev, isTranslating: false }))
         }
+    }
+
+    const handleSave = async () => {
+        if (!state.result.translatedText) return // Only save if there's a translation result
+
+        setState((prev) => ({ ...prev, isSaving: true, error: null }))
+
+        try {
+            const savedPrompt = await TranslationService.savePrompt(
+                {
+                    source_text: state.result.originalText,
+                    translated_text: state.result.translatedText,
+                    source_language: state.result.sourceLang,
+                    target_language: state.result.targetLang,
+                    name: user?.name || "",
+                },
+                user.id
+            )
+
+            if (savedPrompt.data) {
+                onSavePrompt(savedPrompt.data)
+            } else if (savedPrompt.error) {
+                throw new Error(savedPrompt.error)
+            }
+        } catch (error) {
+            setState((prev) => ({
+                ...prev,
+                error: {
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : "An unknown error occurred while saving",
+                },
+            }))
+        } finally {
+            setState((prev) => ({ ...prev, isSaving: false }))
+        }
+    }
+
+    const handleClear = () => {
+        setState({
+            sourceText: "",
+            sourceLang: "EN",
+            targetLang: "ES",
+            isTranslating: false,
+            isSaving: false,
+            error: null,
+            result: {
+                originalText: "",
+                translatedText: "",
+                sourceLang: "",
+                targetLang: "",
+                timestamp: "",
+            },
+        })
     }
 
     return (
@@ -102,21 +206,24 @@ export function TranslationForm({
             <Card className="p-6">
                 <div className="space-y-6">
                     <TranslationInput
-                        type="source"
+                        label="Source"
                         text={state.sourceText}
-                        selectedLang={state.sourceLang}
+                        language={state.sourceLang}
                         onTextChange={handleSourceTextChange}
-                        onLangChange={handleSourceLangChange}
-                        disabled={state.isTranslating}
+                        onLanguageChange={handleSourceLangChange}
+                        readOnly={false}
+                        className=""
                     />
 
                     <TranslationInput
-                        type="target"
-                        text={initialPrompt?.translated_text || ""}
-                        selectedLang={state.targetLang}
-                        onLangChange={handleTargetLangChange}
-                        disabled={state.isTranslating}
-                        readOnly
+                        label="Target"
+                        text={state.result?.translatedText || ""}
+                        language={state.targetLang}
+                        onTextChange={() => {}}
+                        onLanguageChange={handleTargetLangChange}
+                        readOnly={true}
+                        className=""
+                        onSave={handleSave}
                     />
 
                     {state.error && (
@@ -141,6 +248,19 @@ export function TranslationForm({
                             {state.isTranslating
                                 ? "Translating..."
                                 : "Translate"}
+                        </Button>
+                    </div>
+
+                    <div className="flex justify-end">
+                        <Button
+                            onClick={handleClear}
+                            disabled={state.isTranslating}
+                            className="min-w-[120px]"
+                        >
+                            {state.isTranslating ? (
+                                <LoadingSpinner size="sm" className="mr-2" />
+                            ) : null}
+                            {state.isTranslating ? "Canceling..." : "Clear"}
                         </Button>
                     </div>
                 </div>

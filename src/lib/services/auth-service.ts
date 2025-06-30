@@ -1,5 +1,5 @@
 import { supabase } from "../supabaseClient"
-import { AuthError } from "../types"
+import { ApiError } from "../types"
 
 export class AuthService {
     /**
@@ -8,7 +8,7 @@ export class AuthService {
      */
     static async signInWithGithub(
         redirectTo: string
-    ): Promise<{ error: AuthError | null }> {
+    ): Promise<{ error: ApiError | null }> {
         try {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: "github",
@@ -35,7 +35,7 @@ export class AuthService {
     /**
      * Sign out the current user
      */
-    static async signOut(): Promise<{ error: AuthError | null }> {
+    static async signOut(): Promise<{ error: ApiError | null }> {
         try {
             const { error } = await supabase.auth.signOut()
             if (error) throw error

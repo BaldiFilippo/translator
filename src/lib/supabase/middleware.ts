@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server"
 export async function updateSession(request: NextRequest) {
     try {
         // Create a response object that we'll update with new headers
-        let response = NextResponse.next({
+        const response = NextResponse.next({
             request: {
                 headers: request.headers,
             },
@@ -18,28 +18,36 @@ export async function updateSession(request: NextRequest) {
                     get(name: string) {
                         return request.cookies.get(name)?.value
                     },
-                    set(name: string, value: string, options: any) {
+                    set(name: string, value: string, options: unknown) {
+                        options =
+                            options && typeof options === "object"
+                                ? options
+                                : {}
                         request.cookies.set({
                             name,
                             value,
-                            ...options,
+                            ...(options as object),
                         })
                         response.cookies.set({
                             name,
                             value,
-                            ...options,
+                            ...(options as object),
                         })
                     },
-                    remove(name: string, options: any) {
+                    remove(name: string, options: unknown) {
+                        options =
+                            options && typeof options === "object"
+                                ? options
+                                : {}
                         request.cookies.set({
                             name,
                             value: "",
-                            ...options,
+                            ...(options as object),
                         })
                         response.cookies.set({
                             name,
                             value: "",
-                            ...options,
+                            ...(options as object),
                         })
                     },
                 },

@@ -2,11 +2,11 @@ import { User } from "@supabase/supabase-js"
 
 export interface SavedPrompt {
     id: number
-    user_id: string
+    name: string
     source_text: string
     translated_text: string
-    source_lang: string
-    target_lang: string
+    source_language: string
+    target_language: string
     created_at: string
 }
 

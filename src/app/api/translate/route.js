@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server'
 export async function POST(request) {
   try {
     const { text, sourceLanguage, targetLanguage } = await request.json()
-    console.log("Incoming translation request:", { text, sourceLanguage, targetLanguage })
 
     const apiKey = process.env.DEEPL_API_KEY
 
@@ -27,10 +26,8 @@ export async function POST(request) {
       }),
     })
 
-    console.log("DeepL API response status:", response.status)
     if (!response.ok) {
       const errorText = await response.text()
-      console.error("DeepL API error response:", errorText)
       return NextResponse.json(
         { message: `DeepL API error: ${response.status} - ${errorText}` },
         { status: response.status }
@@ -38,7 +35,6 @@ export async function POST(request) {
     }
 
     const data = await response.json()
-    console.log("DeepL API response data:", data)
     return NextResponse.json({ translatedText: data.translations[0].text })
   } catch (error) {
     console.error('Translation API error:', error)

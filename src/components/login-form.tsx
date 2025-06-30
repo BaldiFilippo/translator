@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card"
 import { useState } from "react"
 import { Loader2Icon } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export function LoginForm({
     className,
@@ -19,6 +20,7 @@ export function LoginForm({
 }: React.ComponentPropsWithoutRef<"div">) {
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
+    const router = useRouter()
 
     const handleSocialLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -26,17 +28,24 @@ export function LoginForm({
         setError(null)
 
         try {
-            const { error } = await supabase.auth.signInWithOAuth({
+            const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: "github",
                 options: {
-                    redirectTo: `${window.location.origin}/auth/oauth?next=/`,
+                    redirectTo: `${window.location.origin}/auth/callback`,
                 },
             })
 
             if (error) throw error
+
+            // If we have a provider URL, redirect to it
+            if (data?.url) {
+                router.push(data.url)
+            }
         } catch (error: unknown) {
             setError(
-                error instanceof Error ? error.message : "An error occurred"
+                error instanceof Error
+                    ? error.message
+                    : "An error occurred during login"
             )
             setIsLoading(false)
         }
@@ -57,7 +66,7 @@ export function LoginForm({
                     <form onSubmit={handleSocialLogin}>
                         <div className="flex flex-col gap-6">
                             {error && (
-                                <p className="text-sm text-destructive-500">
+                                <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/50 p-3 rounded-md">
                                     {error}
                                 </p>
                             )}

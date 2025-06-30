@@ -17,11 +17,7 @@ export interface TranslationRequest {
 }
 
 export interface TranslationResponse {
-    translatedText: string
-    detectedLanguage?: {
-        language: string
-        confidence: number
-    }
+    translations: { text: string }[]
 }
 
 export interface ApiError {

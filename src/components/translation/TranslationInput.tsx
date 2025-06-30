@@ -1,15 +1,12 @@
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import { SUPPORTED_LANGUAGES } from "@/lib/types"
-import { X, Search, Copy, Star } from "lucide-react"
+import { X, Search, Copy, Star, Check, ChevronsUpDown } from "lucide-react"
 import { Button } from "../ui/button"
+import { useState } from "react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface TranslationInputProps {
     label: string
@@ -32,8 +29,24 @@ export function TranslationInput({
     className,
     onSave,
 }: TranslationInputProps) {
+    const [copied, setCopied] = useState(false)
+    const [saved, setSaved] = useState(false)
+    const [open, setOpen] = useState(false)
+
     const handleCopy = () => {
-        if (text) navigator.clipboard.writeText(text)
+        if (text) {
+            navigator.clipboard.writeText(text)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+        }
+    }
+
+    const handleSaveClick = () => {
+        if (onSave) {
+            onSave()
+            setSaved(true)
+            setTimeout(() => setSaved(false), 2000)
+        }
     }
 
     const handleGoogleSearch = () => {
@@ -49,18 +62,43 @@ export function TranslationInput({
             <Label htmlFor={`${label}-text`} className="font-semibold">
                 {label}
             </Label>
-            <Select value={language} onValueChange={onLanguageChange}>
-                <SelectTrigger className="w-full md:w-[160px] focus:ring-2 focus:ring-orange-500">
-                    <SelectValue placeholder="Select language" />
-                </SelectTrigger>
-                <SelectContent>
-                    {SUPPORTED_LANGUAGES.map((lang) => (
-                        <SelectItem key={lang.code} value={lang.code}>
-                            {lang.name}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className="w-full md:w-[160px] justify-between focus:ring-2 focus:ring-orange-500"
+                    >
+                        {language
+                            ? SUPPORTED_LANGUAGES.find(
+                                  (lang) => lang.code === language
+                              )?.name
+                            : "Select language..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                    <Command>
+                        <CommandInput placeholder="Search language..." />
+                        <CommandEmpty>No language found.</CommandEmpty>
+                        <CommandGroup>
+                            {SUPPORTED_LANGUAGES.map((lang) => (
+                                <CommandItem
+                                    key={lang.code}
+                                    value={lang.name}
+                                    onSelect={() => {
+                                        onLanguageChange(lang.code)
+                                        setOpen(false)
+                                    }}
+                                >
+                                    {lang.name}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </Command>
+                </PopoverContent>
+            </Popover>
             <div className="relative">
                 <Textarea
                     id={`${label}-text`}
@@ -100,22 +138,38 @@ export function TranslationInput({
                             variant="ghost"
                             onClick={handleCopy}
                             aria-label="Copy translation"
+                            className={copied ? "text-green-500" : ""}
                         >
-                            <Copy className="h-4 w-4" />
+                            {copied ? (
+                                <Check className="h-4 w-4" />
+                            ) : (
+                                <Copy className="h-4 w-4" />
+                            )}
                         </Button>
                         {onSave && (
                             <Button
                                 size="icon"
                                 variant="ghost"
-                                onClick={onSave}
+                                onClick={handleSaveClick}
                                 aria-label="Save translation"
+                                className={saved ? "text-yellow-500" : ""}
                             >
-                                <Star className="h-4 w-4" />
+                                {saved ? (
+                                    <Check className="h-4 w-4" />
+                                ) : (
+                                    <Star className="h-4 w-4" />
+                                )}
                             </Button>
                         )}
                     </div>
                 )}
             </div>
+            {copied && (
+                <Alert className="mt-2">
+                    <AlertTitle>Copied!</AlertTitle>
+                    <AlertDescription>Text copied to clipboard.</AlertDescription>
+                </Alert>
+            )}
         </div>
     )
 }

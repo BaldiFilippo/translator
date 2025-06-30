@@ -36,7 +36,6 @@ export function TranslationForm({
     initialPrompt,
     user,
 }: TranslationFormProps) {
-    console.log("TranslationForm rendered. initialPrompt:", initialPrompt)
     const [state, setState] = useState<TranslationFormState>({
         sourceText: initialPrompt?.source_text || "",
         sourceLang: initialPrompt?.source_language || "EN",
@@ -52,8 +51,6 @@ export function TranslationForm({
             timestamp: "",
         },
     })
-
-    console.log("TranslationForm initial state:", state)
 
     useEffect(() => {
         if (initialPrompt) {
@@ -76,12 +73,10 @@ export function TranslationForm({
     }, [initialPrompt])
 
     const handleSourceLangChange = (lang: string) => {
-        console.log("handleSourceLangChange called with:", lang)
         setState((prev) => ({ ...prev, sourceLang: lang }))
     }
 
     const handleTargetLangChange = (lang: string) => {
-        console.log("handleTargetLangChange called with:", lang)
         setState((prev) => ({ ...prev, targetLang: lang }))
     }
 
@@ -234,7 +229,18 @@ export function TranslationForm({
                         </div>
                     )}
 
-                    <div className="flex justify-end">
+                    <div className="flex gap-2 justify-end">
+                        <Button
+                            onClick={handleClear}
+                            disabled={state.isTranslating}
+                            className="min-w-[120px]"
+                            variant="outline"
+                        >
+                            {state.isTranslating ? (
+                                <LoadingSpinner size="sm" className="mr-2" />
+                            ) : null}
+                            {state.isTranslating ? "Canceling..." : "Clear"}
+                        </Button>
                         <Button
                             onClick={handleTranslate}
                             disabled={
@@ -248,19 +254,6 @@ export function TranslationForm({
                             {state.isTranslating
                                 ? "Translating..."
                                 : "Translate"}
-                        </Button>
-                    </div>
-
-                    <div className="flex justify-end">
-                        <Button
-                            onClick={handleClear}
-                            disabled={state.isTranslating}
-                            className="min-w-[120px]"
-                        >
-                            {state.isTranslating ? (
-                                <LoadingSpinner size="sm" className="mr-2" />
-                            ) : null}
-                            {state.isTranslating ? "Canceling..." : "Clear"}
                         </Button>
                     </div>
                 </div>

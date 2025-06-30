@@ -13,6 +13,18 @@ import { AuthService } from "@/lib/services/auth-service"
 import { Button } from "@/components/ui/button"
 import { ErrorBoundary } from "@/components/ui/error-boundary"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function HomePage() {
     const { user, loading, error: authError } = useAuth()
@@ -111,17 +123,55 @@ export default function HomePage() {
         <ErrorBoundary>
             <main className="min-h-screen bg-background flex flex-col items-center px-2 py-6">
                 <header className="w-full max-w-4xl flex justify-between items-center mb-8 px-2">
-                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-center flex-1">
+                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight flex-1">
                         DeepL Translator
                     </h1>
-                    <Button
-                        onClick={handleSignOut}
-                        aria-label="Sign out"
-                        variant="ghost"
-                        className="ml-4"
-                    >
-                        Sign Out
-                    </Button>
+                    {user && (
+                        <div className="flex items-center space-x-4">
+                            <Avatar>
+                                <AvatarImage
+                                    src={user.user_metadata.avatar_url}
+                                />
+                                <AvatarFallback>
+                                    {user.email?.charAt(0)?.toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium hidden md:block">
+                                {user.user_metadata.full_name || user.email}
+                            </span>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        variant="secondary"
+                                        className="ml-4"
+                                    >
+                                        Sign Out
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                            Are you sure you want to sign out?
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Signing out will end your current
+                                            session.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>
+                                            Cancel
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={handleSignOut}
+                                        >
+                                            Sign Out
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                    )}
                 </header>
 
                 <section className="w-full max-w-4xl bg-white dark:bg-zinc-900 rounded-xl shadow-lg p-4 md:p-8 flex flex-col gap-8">

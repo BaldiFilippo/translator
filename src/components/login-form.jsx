@@ -55,10 +55,10 @@ export function LoginForm({ className, ...props }) {
     }
 
     return (
-        <div className={cn("flex flex-col gap-6 w-full", className)} {...props}>
+        <div className={cn("flex flex-col gap-6", className)} {...props}>
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-2xl w-full">
+                    <CardTitle className="text-2xl">
                         Ready to translate?
                     </CardTitle>
                     <CardDescription>

@@ -24,10 +24,7 @@ function useErrorHandler() {
     return { error, handleError, setError }
 }
 
-export function LoginForm({
-    className,
-    ...props
-}) {
+export function LoginForm({ className, ...props }) {
     const { error, handleError } = useErrorHandler()
     const [isLoading, setIsLoading] = useState(false)
     const router = useRouter()
@@ -58,10 +55,10 @@ export function LoginForm({
     }
 
     return (
-        <div className={cn("flex flex-col gap-6", className)} {...props}>
+        <div className={cn("flex flex-col gap-6 w-full", className)} {...props}>
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-2xl">
+                    <CardTitle className="text-2xl w-full">
                         Ready to translate?
                     </CardTitle>
                     <CardDescription>

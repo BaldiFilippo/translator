@@ -37,36 +37,43 @@ export class TranslationService {
     /**
      * Get all saved prompts for the current user
      */
-    static async getSavedPrompts() {
+    static async getSavedPrompts(userId) {
+        if (!userId) {
+            return { data: null, error: "User ID is required to fetch prompts." };
+        }
         try {
             const { data, error } = await supabase
                 .from("translation")
                 .select("id, name, source_text, translated_text, source_language, target_language, created_at")
-                .order("created_at", { ascending: false })
+                .eq("name", userId)
+                .order("created_at", { ascending: false });
 
-            if (error) throw error
+            if (error) throw error;
 
-            return { data: data || [], error: null }
+            return { data: data || [], error: null };
         } catch (error) {
-            return handleServiceError(error, "Failed to fetch prompts")
+            return handleServiceError(error, "Failed to fetch prompts");
         }
     }
 
     /**
      * Delete a saved prompt
      */
-    static async deletePrompt(id) {
+    static async deletePrompt(id, userId) {
+        if (!userId) {
+            return { error: "User ID is required to delete a prompt." };
+        }
         try {
             const { error } = await supabase
                 .from("translation")
                 .delete()
-                .match({ id })
+                .match({ id, name: userId });
 
-            if (error) throw error
+            if (error) throw error;
 
-            return { error: null }
+            return { error: null };
         } catch (error) {
-            return handleServiceError(error, "Failed to delete prompt")
+            return handleServiceError(error, "Failed to delete prompt");
         }
     }
 }

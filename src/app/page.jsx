@@ -57,19 +57,20 @@ export default function HomePage() {
     }, [user, loading])
 
     const fetchSavedPrompts = async () => {
+        if (!user) return;
         try {
-            setIsLoading(true)
-            const { data, error } = await TranslationService.getSavedPrompts()
-            if (error) throw error
+            setIsLoading(true);
+            const { data, error } = await TranslationService.getSavedPrompts(user.id);
+            if (error) throw error;
             if (data) {
-                setSavedPrompts(data)
+                setSavedPrompts(data);
             }
         } catch (err) {
-            handleError(err, "Failed to fetch saved prompts")
+            handleError(err, "Failed to fetch saved prompts");
         } finally {
-            setIsLoading(false)
+            setIsLoading(false);
         }
-    }
+    };
 
     const handleSavePrompt = (prompt) => {
         setSavedPrompts([prompt, ...savedPrompts])
@@ -81,14 +82,15 @@ export default function HomePage() {
     }
 
     const handleDeletePrompt = async (id) => {
+        if (!user) return;
         try {
-            const { error } = await TranslationService.deletePrompt(id)
-            if (error) throw error
-            setSavedPrompts(savedPrompts.filter((prompt) => prompt.id !== id))
+            const { error } = await TranslationService.deletePrompt(id, user.id);
+            if (error) throw error;
+            setSavedPrompts(savedPrompts.filter((prompt) => prompt.id !== id));
         } catch (err) {
-            handleError(err, "Failed to delete prompt")
+            handleError(err, "Failed to delete prompt");
         }
-    }
+    };
 
     const handleSignOut = async () => {
         try {
